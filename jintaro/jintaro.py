@@ -217,8 +217,10 @@ class Jintaro:
             headers = list(map(process_header, sheet.colnames))
 
             # turn rows into contexts
-            for row in sheet.rows():
-                data = {headers[i]: val for i, val in enumerate(row)}
+            for i, row_data in enumerate(sheet.rows()):
+                data = {headers[i]: val for i, val in enumerate(row_data)}
+                data["_row"] = i
+                data["_input"] = path
                 yield data
 
 
@@ -275,7 +277,7 @@ class JintaroJob(object):
             except Exception as ex:
                 raise exceptions.OutputError(f"Failed to evaluate skip rule: {ex}")
             if skip:
-                Log.info("Skipping ")
+                Log.info("Skipping dataset {} from '{}'", self._context["_row"]+1, self._context["_input"])
                 return
 
         # run pre hook
