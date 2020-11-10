@@ -135,24 +135,6 @@ def main():
     levels = [Log.ERROR, Log.INFO, Log.DEBUG]
     Log.level = levels[min(len(levels) - 1, args.verbose + 1)]
 
-    # -c --config
-    # -i --input
-    # -t --template
-    # -o output
-    # -f --force overwrite
-    # -v --verbose
-    # --pre-hook
-    # --post-hook
-
-    # load config file if specified
-    # check if input is missing (from config or cli)
-    # create Jintaro instance
-    # Jintaro.run()
-    # check input files (binary, existance)
-    # load files
-    # create context
-    # render templates
-
     try:
         jintaro = Jintaro()
 
