@@ -188,7 +188,8 @@ class Jintaro:
 
         # check input file existence
         for path in input_paths:
-            check_file(path)
+            path = Path(path)
+            check_file(path, binary=path.suffix in [".ods", ".xlsx"])
 
         # go through each input file and parse the data
         for path in input_paths:
