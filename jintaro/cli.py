@@ -9,12 +9,6 @@ from .exceptions import ConfigValueError
 from .jintaro import Jintaro
 from .log import Log
 
-# raise error when running with Python2
-if not sys.version_info[:2] >= (3, 0):
-    raise SystemExit("ERROR: Templer requires a Python3 runtime! Your current Python version is: {}".format("".join(
-        sys.version.splitlines())))
-
-
 def main():
     # parse arguments
     parser = argparse.ArgumentParser(
