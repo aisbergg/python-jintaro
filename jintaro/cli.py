@@ -176,6 +176,7 @@ def main():
             Log.error(str(e))
         sys.exit(1)
 
+    Log.info("Jintaro finished, exiting now...")
     sys.exit(0)
 
 

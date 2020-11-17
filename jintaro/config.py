@@ -12,11 +12,17 @@ from .exceptions import ConfigError, UnknownOptionError
 from .log import Log
 from .utils import read_file
 
+
 class ConfigValidation(object):
 
     class PurgeUnknownValidator(Validator):
 
         class PrettyErrorHandler(BasicErrorHandler):
+
+            def __init__(self, tree=None):
+                super().__init__(tree)
+                self.messages[0x23] = "option is missing. Make sure to supply the option either via "\
+                    "configuration, environment variable or command line argument"
 
             def __call__(self, errors):
                 self.clear()
@@ -257,17 +263,14 @@ class Config(ConfigValidation):
                                    self._file_src.get("header_row_column"), [0, 0]),
             },
             "vars": {
-                "required":
-                    False,
-                "type":
-                    "dict",
-                "allow_unknown":
-                    True,
-                "nullable":
-                    True,
-                "default":
-                    self._defaults(self._api_src.get("vars"), self._env_src.get("JINTARO_HEADER_ROW_COLUMN"),
-                                   self._file_src.get("vars"), [0, 0]),
+                "required": False,
+                "type": "dict",
+                "allow_unknown": True,
+                "nullable": True,
+                "default": self._defaults(
+                    self._api_src.get("vars"),
+                    self._file_src.get("vars"),
+                ),
             },
         }
 
@@ -384,6 +387,7 @@ class YmlFileConfigSource(ConfigSource, ConfigValidation):
         self._path = path if isinstance(path, Path) else Path(path)
         self._parse_file()
         self._validate()
+        self._make_relative_paths()
 
     def _init_schema(self):
         self._schema = {
@@ -414,6 +418,26 @@ class YmlFileConfigSource(ConfigSource, ConfigValidation):
                 "nullable": True,
             },
         }
+
+    def _make_relative_paths(self):
+
+        def make_relative(string):
+            path = Path(string)
+            if path.is_absolute():
+                return string
+            return str(self._path.parent.joinpath(path))
+
+        input_ = self._config.get("input", None)
+        if input_:
+            self._config["input"] = [make_relative(p) for p in input_]
+
+        output = self._config.get("output", None)
+        if output:
+            self._config["output"] = make_relative(output)
+
+        template = self._config.get("template", None)
+        if template:
+            self._config["template"] = make_relative(template)
 
     def _parse_file(self):
         try:

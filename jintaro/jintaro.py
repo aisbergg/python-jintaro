@@ -8,7 +8,8 @@ import pyexcel
 
 from . import exceptions
 from .config import ApiConfigSource, Config
-from .jinja_renderer import render_template
+from .jinja.recursive_mapping import RecursiveMapping
+from .jinja.recursive_template import render_template
 from .log import Log
 from .utils import check_file, merge_dicts, read_file
 
@@ -161,13 +162,12 @@ class Jintaro:
         # generate final config
         config = Config(self._api_config, use_envs=True)
 
-        # load input files
-        contexts = self._load_input(config)
+        # generate jobs
+        jobs = self._generate_jobs(config)
 
-        # create and run jobs
-        for context in contexts:
+        # run jobs
+        for job in jobs:
             try:
-                job = JintaroJob(context, config)
                 job.run()
             except Exception as ex:  #pylint: disable=broad-except
                 if not self._api_config.get("continue_on_error"):
@@ -183,8 +183,9 @@ class Jintaro:
     #                                                                          #
     # -------------------------------------------------------------------------#
 
-    def _load_input(self, config) -> Generator[dict, None, None]:
+    def _generate_jobs(self, config) -> Generator[dict, None, None]:
         input_paths = config.get("input")
+        extra_variables = config.get("vars") or {}
 
         # check input file existence
         for path in input_paths:
@@ -206,7 +207,7 @@ class Jintaro:
             if not sheet.colnames:
                 raise exceptions.InputListError(f"Input file '{path}' is missing a proper column header.")
 
-            # parse header
+            # parse headers
             def process_header(header):
                 header = header.lower()
                 # create valid identifier by removing invalid combinations
@@ -216,89 +217,153 @@ class Jintaro:
 
             headers = list(map(process_header, sheet.colnames))
 
-            # turn rows into contexts
+            # turn rows into jobs
             for i, row_data in enumerate(sheet.rows()):
-                data = {headers[i]: val for i, val in enumerate(row_data)}
-                data["_row"] = i
-                data["_input"] = path
-                yield data
+                variables = {headers[i]: val for i, val in enumerate(row_data)}
+                variables = merge_dicts(extra_variables, variables)
+                yield JintaroJob(
+                    cwd=self._api_config.get("config_path").parent,
+                    input_path=path,
+                    row=i,
+                    output_path=config.get("output"),
+                    template_path=config.get("template"),
+                    skip=config.get("skip"),
+                    force=config.get("force"),
+                    delete=config.get("delete"),
+                    pre_hook=config.get("pre_hook"),
+                    post_hook=config.get("post_hook"),
+                    variables=variables,
+                )
 
 
 class JintaroJob(object):
 
-    def __init__(self, context: dict, config: Config):
-        self._context = context
-        self._config = config
-        self._output = Path(render_template(config.get("output"), context))
-        self._template = Path(render_template(config.get("template"), context))
-        self._pre_hook = render_template(config.get("pre_hook"), context)
-        self._post_hook = render_template(config.get("post_hook"), context)
-        self._extend_context()
+    def __init__(self, cwd, input_path, row, output_path, template_path, pre_hook, post_hook, skip, force, delete,
+                 variables):
+        self._context = self._create_context(cwd, input_path, row, output_path, template_path, pre_hook, post_hook, skip,
+                                             force, delete, variables)
 
-    def _extend_context(self) -> None:
-        extra_vars = self._config.get("vars") or {}
+    @property
+    def cwd(self):
+        return self._context["__cwd"]
+
+    @property
+    def input(self):
+        return Path(self._context["__input"])
+
+    @property
+    def row(self):
+        return self._context["__row"]
+
+    @property
+    def output(self):
+        return Path(self._context["__output"])
+
+    @property
+    def template(self):
+        return Path(self._context["__template"])
+
+    @property
+    def pre_hook(self):
+        return self._context["__pre_hook"]
+
+    @property
+    def post_hook(self):
+        return self._context["__post_hook"]
+
+    @property
+    def skip(self):
+        return self._context["__skip"]
+
+    @property
+    def force(self):
+        return self._context["__force"]
+
+    @property
+    def delete(self):
+        return self._context["__delete"]
+
+    def _create_context(self, cwd, input_path, row, output_path, template_path, pre_hook, post_hook, skip, force, delete,
+                        variables) -> RecursiveMapping:
         job_vars = {
-            "destination": self._output,
-            "_destination": self._output,
-            "dest": self._output,
-            "_dest": self._output,
-            "output": self._output,
-            "_output": self._output,
-            "template": self._template,
-            "_template": self._template,
+            "__cwd": str(cwd),
+            "input": str(input_path),
+            "__input": str(input_path),
+            "src": str(input_path),
+            "__src": str(input_path),
+            "row": row,
+            "__row": row,
+            "destination": str(output_path),
+            "__destination": str(output_path),
+            "dest": str(output_path),
+            "__dest": str(output_path),
+            "output": str(output_path),
+            "__output": str(output_path),
+            "template": str(template_path),
+            "__template": str(template_path),
+            "__pre_hook": pre_hook,
+            "__post_hook": post_hook,
+            "__skip": skip,
+            "__force": force,
+            "__delete": delete,
         }
-        merged = merge_dicts(extra_vars, job_vars)
-        self._context = merge_dicts(merged, self._context)
+        job_vars.update(variables)
+        return RecursiveMapping(job_vars)
 
     def _run_hook(self, command: str, hook_type: str) -> None:
         if command:
+            Log.debug("Running {} hook: {}", hook_type, command)
             process = subprocess.Popen(
                 command,
                 shell=True,
+                cwd=self.cwd,
                 universal_newlines=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
             )
+            process.wait()
             process_output = lambda output: "\n".join(output.splitlines())
             stdout = process_output(process.stdout.read())
             stderr = process_output(process.stderr.read())
             Log.debug(stdout)
             if process.returncode != 0:
-                raise exceptions.HookRunError(f"Failed to run {hook_type} hook for '{self._output}': {stderr}")
+                print(f"Error code: {process.returncode}")
+                raise exceptions.HookRunError(f"Failed to run {hook_type} hook for '{self.output}': {stderr}")
 
     def run(self) -> None:
         # delete rendered file
-        skip_rule = self._config.get("skip")
-        if skip_rule:
+        skip = self.skip
+        if skip:
             try:
-                skip = render_template(skip_rule, self._context)
                 if isinstance(skip, str):
                     skip = bool(strtobool(skip))
             except Exception as ex:
                 raise exceptions.OutputError(f"Failed to evaluate skip rule: {ex}")
             if skip:
-                Log.info("Skipping dataset {} from '{}'", self._context["_row"]+1, self._context["_input"])
+                Log.info("Skipping dataset {} from '{}'", self.row + 1, self.input)
                 return
 
+        Log.info("Processing dataset {} from '{}'", self.row + 1, self.input)
+
         # run pre hook
-        self._run_hook(self._pre_hook, 'pre')
+        self._run_hook(self.pre_hook, 'pre')
 
         # render template
-        template_content = read_file(self._template)
+        template_content = read_file(self.template)
         rendered_template = render_template(template_content, self._context)
 
         # write content to file
-        if self._output.exists():
-            if not self._output.is_file():
-                raise exceptions.OutputError(f"Path '{self._output}' exists and is not a file. ")
-            if not self._config.get("force"):
-                raise exceptions.OutputError(f"Path '{self._output}' already exists. Use 'force' to overwrite it.")
-        self._output.parent.mkdir(parents=True, exist_ok=True)
-        self._output.write_text(rendered_template)
+        if self.output.exists():
+            if not self.output.is_file():
+                raise exceptions.OutputError(f"Path '{self.output}' exists and is not a file. ")
+            if not self.force:
+                raise exceptions.OutputError(f"Path '{self.output}' already exists. Use 'force' to overwrite it.")
+        self.output.parent.mkdir(parents=True, exist_ok=True)
+        self.output.write_text(rendered_template)
 
         # run pre hook
-        self._run_hook(self._post_hook, 'post')
+        self._run_hook(self.post_hook, 'post')
 
         # delete rendered file
-        if self._config.get("delete"):
-            self._output.unlink()
+        if self.delete:
+            self.output.unlink()

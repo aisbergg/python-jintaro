@@ -1,8 +1,8 @@
 """ Custom Jinja2 filters """
 import re
 from distutils.util import strtobool
-
-from jinja2 import StrictUndefined, UndefinedError
+from pathlib import Path
+from shlex import quote as shlex_quote
 
 
 def regex_escape(string):
@@ -92,15 +92,27 @@ def to_bool(string, default_value=None):
         if default_value is not None:
             return default_value
         else:
-            raise ValueError("'{0}' is not a boolean value".format(string.strip()))
+            raise ValueError("'{0}' is not a boolean value".format(string.strip()))  #pylint: disable=raise-missing-from
+
+
+def to_path(string):
+    """Convert a string to a pathlib.Path."""
+    return Path(str(string))
+
+
+def quote(string):
+    """Quote a string for shell usage."""
+    return shlex_quote(str(string))
 
 
 # register the filters
-FILTERS = {
+JINJA_FILTERS = {
     'regex_escape': regex_escape,
     'regex_findall': regex_findall,
     'regex_replace': regex_replace,
     'regex_search': regex_search,
     'regex_contains': regex_contains,
     'bool': to_bool,
+    'path': to_path,
+    'quote': quote,
 }
