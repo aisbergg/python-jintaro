@@ -128,7 +128,7 @@ def main():
 
     # initialize dumb logger
     levels = [Log.ERROR, Log.INFO, Log.DEBUG]
-    Log.level = levels[min(len(levels) - 1, args.verbose + 1)]
+    Log.configure(level=levels[min(len(levels) - 1, args.verbose + 1)])
 
     try:
         jintaro = Jintaro()
