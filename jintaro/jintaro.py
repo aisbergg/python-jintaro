@@ -2,7 +2,7 @@ import re
 import subprocess
 from distutils.util import strtobool
 from pathlib import Path
-from typing import Any, Generator, List, Tuple, Union
+from typing import Any, Dict, Generator, List, Mapping, Optional, Tuple, Union
 
 import pyexcel
 
@@ -17,7 +17,20 @@ from .utils import check_file, merge_dicts, read_file
 class Jintaro:
 
     def __init__(self):
-        self._api_config = ApiConfigSource()
+        self._api_config = ApiConfigSource({
+            "config_path": None,
+            "input": None,
+            "template": None,
+            "output": None,
+            "force": None,
+            "delete": None,
+            "pre_hook": None,
+            "post_hook": None,
+            "header_row_column": None,
+            "csv_delimiter": None,
+            "vars": None,
+            "continue_on_error": None,
+        })
 
     # -------------------------------------------------------------------------#
     #      _    ____ ___                                                       #
@@ -28,7 +41,7 @@ class Jintaro:
     #                                                                          #
     # -------------------------------------------------------------------------#
 
-    def config(self, path: Union[str, Path] = None) -> Union["Jintaro", Path]:
+    def config(self, path: Optional[Union[str, Path]] = None, clear: bool = False) -> Union["Jintaro", Path]:
         """Set path of Jintaro configuration file for.
 
         Returns:
@@ -36,22 +49,22 @@ class Jintaro:
             Jintaro: The Jintaro instance, if given path is not None.
         """
         assert (isinstance(path, (str, Path, type(None))))
+        assert (isinstance(clear, bool))
 
-        if path is None:
-            return self._api_config.get("config_path")
-        elif isinstance(path, str):
-            self._api_config.set("config_path", Path(path))
-        else:
-            self._api_config.set("config_path", path)
-        return self
+        if isinstance(path, str):
+            path = Path(path)
+        return self._property("config_path", path, clear)
 
-    def input(self, path: Union[str, Path, List[Union[str, Path]]] = None, clear=False) -> Union["Jintaro", List[Path]]:
+    def input(self,
+              path: Optional[Union[str, Path, List[Union[str, Path]]]] = None,
+              clear: bool = False) -> Union["Jintaro", List[Path]]:
         assert (isinstance(path, (str, Path, list, type(None))))
+        assert (isinstance(clear, bool))
 
         if clear:
             self._api_config.set("input", None)
             return self
-        paths = self._api_config.get("input", [])
+        paths = self._api_config.get("input")
         if path is None:
             return paths
         elif isinstance(path, list):
@@ -65,98 +78,78 @@ class Jintaro:
         self._api_config.set("input", paths)
         return self
 
-    def template(self, path: Union[str, Path, None] = None) -> Union["Jintaro", Path, None]:
+    def template(self, path: Optional[Union[str, Path]] = None, clear: bool = False) -> Union["Jintaro", Path, None]:
         assert (isinstance(path, (str, Path, type(None))))
-
-        if path is None:
-            return self._api_config.get("template")
-        elif isinstance(path, str):
-            self._api_config.set("template", Path(path))
-        else:
-            self._api_config.set("template", path)
-        return self
-
-    def output(self, path: Union[str, Path, None] = None) -> Union["Jintaro", Path, None]:
-        assert (isinstance(path, (str, Path, type(None))))
-
-        if path is None:
-            return self._api_config.get("output")
-        elif isinstance(path, str):
-            self._api_config.set("output", Path(path))
-        else:
-            self._api_config.set("output", path)
-        return self
-
-    def force(self, force_: Union[bool, None] = None) -> Union["Jintaro", bool]:
-        assert (isinstance(force_, (bool, type(None))))
-
-        if force_ is None:
-            return self._api_config.get("force")
-        self._api_config.set("force", force_)
-        return self
-
-    def delete(self, delete: Union[bool, None] = None) -> Union["Jintaro", bool]:
-        assert (isinstance(delete, (bool, type(None))))
-
-        if delete is None:
-            return self._api_config.get("delete")
-        self._api_config.set("delete", delete)
-        return self
-
-    def pre_hook(self, cmd: Union[str, None] = None) -> Union["Jintaro", str]:
-        assert (isinstance(cmd, (str, type(None))))
-
-        if cmd is None:
-            return self._api_config.get("pre_hook")
-        self._api_config.set("pre_hook", cmd)
-
-    def post_hook(self, cmd: Union[str, None] = None) -> Union["Jintaro", str]:
-        assert (isinstance(cmd, (str, type(None))))
-
-        if cmd is None:
-            return self._api_config.get("post_hook")
-        self._api_config.set("post_hook", cmd)
-
-    def header_row_column(self,
-                          row: Union[int, None] = None,
-                          column: Union[int, None] = None) -> Union["Jintaro", Tuple]:
-        assert (row is None or (isinstance(row, int) and row >= 0))
-        assert (column is None or (isinstance(column, int) and column >= 0))
-
-        if row is None and column is None:
-            return self._api_config.get("header_row_column")
-        row = row or 0
-        column = column or 0
-        self._api_config.set("header_row_column", (row, column))
-        return self
-
-    def csv_delimiter(self, delimiter: Union[str, None] = None) -> Union["Jintaro", str]:
-        assert (isinstance(delimiter, (str, type(None))))
-
-        if delimiter is None:
-            return self._api_config.get("csv_delimiter")
-        self._api_config.set("csv_delimiter", delimiter)
-        return self
-
-    def extra_vars(self, vars_: Union[dict, None] = None, clear=False) -> Union["Jintaro", dict, None]:
-        assert (isinstance(vars_, (dict, type(None))))
         assert (isinstance(clear, bool))
 
-        if clear:
-            self._api_config.set("vars", None)
-            return self
-        if vars_ is None:
-            return self._api_config.get("vars")
-        self._api_config.set("vars", vars_)
-        return self
+        if isinstance(path, str):
+            path = Path(path)
+        return self._property("template", path, clear)
 
-    def continue_on_error(self, continue_: Union[bool, None] = None) -> Union["Jintaro", bool]:
-        assert (isinstance(continue_, (bool, type(None))))
+    def output(self, path: Optional[Union[str, Path]] = None, clear: bool = False) -> Union["Jintaro", Path, None]:
+        assert (isinstance(path, (str, Path, type(None))))
+        assert (isinstance(clear, bool))
 
-        if continue_ is None:
-            return self._api_config.get("continue_on_error")
-        self._api_config.set("continue_on_error", continue_)
-        return self
+        if isinstance(path, str):
+            path = Path(path)
+        return self._property("output", path, clear)
+
+    def force(self, force_: Optional[bool] = None, clear: bool = False) -> Union["Jintaro", bool, None]:
+        assert (isinstance(force_, (bool, type(None))))
+        assert (isinstance(clear, bool))
+
+        return self._property("force", force_, clear)
+
+    def delete(self, delete_: Optional[bool] = None, clear: bool = False) -> Union["Jintaro", bool, None]:
+        assert (isinstance(delete_, (bool, type(None))))
+        assert (isinstance(clear, bool))
+
+        return self._property("delete", delete_, clear)
+
+    def pre_hook(self, cmd: Optional[str] = None, clear: bool = False) -> Union["Jintaro", str, None]:
+        assert (isinstance(cmd, (str, type(None))))
+        assert (isinstance(clear, bool))
+
+        return self._property("pre_hook", cmd, clear)
+
+    def post_hook(self, cmd: Optional[str] = None, clear: bool = False) -> Union["Jintaro", str, None]:
+        assert (isinstance(cmd, (str, type(None))))
+        assert (isinstance(clear, bool))
+
+        return self._property("post_hook", cmd, clear)
+
+    def header_row_column(self,
+                          row: Optional[int] = None,
+                          column: Optional[int] = None,
+                          clear: bool = False) -> Union["Jintaro", Tuple, None]:
+        assert (row is None or (isinstance(row, int) and row >= 0))
+        assert (column is None or (isinstance(column, int) and column >= 0))
+        assert (isinstance(clear, bool))
+
+        hrc = None
+        if not (row is None and column is None):
+            row = row or 0
+            column = column or 0
+            hrc = (row, column)
+        return self._property("header_row_column", hrc, clear)
+
+    def csv_delimiter(self, delimiter: Optional[str] = None, clear: bool = False) -> Union["Jintaro", str, None]:
+        assert (isinstance(delimiter, (str, type(None))))
+        assert (isinstance(clear, bool))
+
+        return self._property("csv_delimiter", delimiter, clear)
+
+    def extra_vars(self, vars_: Optional[Mapping] = None, clear: bool = False) -> Union["Jintaro", Dict, None]:
+        assert (isinstance(vars, (dict, type(None))))
+        assert (isinstance(clear, bool))
+
+        return self._property("vars", vars, clear)
+
+    def continue_on_error(self, value: Optional[bool] = None, clear: bool = False) -> Union["Jintaro", bool, None]:
+        assert (isinstance(value, (bool, type(None))))
+        assert (isinstance(clear, bool))
+
+        return self._property("continue_on_error", value, clear)
 
     def run(self) -> None:
         # generate final config
@@ -183,7 +176,16 @@ class Jintaro:
     #                                                                          #
     # -------------------------------------------------------------------------#
 
-    def _generate_jobs(self, config) -> Generator[dict, None, None]:
+    def _property(self, name: str, value: Any, clear: bool):
+        if clear:
+            self._api_config.set(name, None)
+            return self
+        if value is None:
+            return self._api_config.get(name)
+        self._api_config.set(name, value)
+        return self
+
+    def _generate_jobs(self, config: Config) -> Generator[dict, None, None]:
         input_paths = config.get("input")
         extra_variables = config.get("vars") or {}
 
@@ -240,51 +242,51 @@ class JintaroJob(object):
 
     def __init__(self, cwd, input_path, row, output_path, template_path, pre_hook, post_hook, skip, force, delete,
                  variables):
-        self._context = self._create_context(cwd, input_path, row, output_path, template_path, pre_hook, post_hook, skip,
-                                             force, delete, variables)
+        self._context = self._create_context(cwd, input_path, row, output_path, template_path, pre_hook, post_hook,
+                                             skip, force, delete, variables)
 
     @property
-    def cwd(self):
+    def cwd(self) -> str:
         return self._context["__cwd"]
 
     @property
-    def input(self):
+    def input(self) -> Path:
         return Path(self._context["__input"])
 
     @property
-    def row(self):
+    def row(self) -> str:
         return self._context["__row"]
 
     @property
-    def output(self):
+    def output(self) -> Path:
         return Path(self._context["__output"])
 
     @property
-    def template(self):
+    def template(self) -> Path:
         return Path(self._context["__template"])
 
     @property
-    def pre_hook(self):
+    def pre_hook(self) -> str:
         return self._context["__pre_hook"]
 
     @property
-    def post_hook(self):
+    def post_hook(self) -> str:
         return self._context["__post_hook"]
 
     @property
-    def skip(self):
+    def skip(self) -> str:
         return self._context["__skip"]
 
     @property
-    def force(self):
+    def force(self) -> str:
         return self._context["__force"]
 
     @property
-    def delete(self):
+    def delete(self) -> str:
         return self._context["__delete"]
 
-    def _create_context(self, cwd, input_path, row, output_path, template_path, pre_hook, post_hook, skip, force, delete,
-                        variables) -> RecursiveMapping:
+    def _create_context(self, cwd, input_path, row, output_path, template_path, pre_hook, post_hook, skip, force,
+                        delete, variables) -> RecursiveMapping:
         job_vars = {
             "__cwd": str(cwd),
             "input": str(input_path),

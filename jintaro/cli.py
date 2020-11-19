@@ -9,6 +9,7 @@ from .exceptions import ConfigValueError
 from .jintaro import Jintaro
 from .log import Log
 
+
 def main():
     # parse arguments
     parser = argparse.ArgumentParser(
