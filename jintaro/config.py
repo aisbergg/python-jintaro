@@ -8,7 +8,7 @@ from cerberus import TypeDefinition, Validator
 from cerberus.errors import REQUIRED_FIELD, BasicErrorHandler, ValidationError
 
 from .exceptions import ConfigError, UnknownOptionError
-from .log import Log
+from .log import log
 from .utils import read_file
 
 # represents a missing option
@@ -53,7 +53,7 @@ class ConfigValidator(Validator):
     def _normalize_purge_unknown(mapping: Mapping, schema: Mapping):
         """ {'type': 'boolean'} """
         for field in [x for x in mapping if x not in schema]:
-            Log.warn(f"Unknown option '{field}' in configuration file")
+            log.warning("Unknown option '%s' in configuration file", field)
             mapping.pop(field)
         return mapping
 
@@ -118,11 +118,11 @@ class ConfigSource(object):
                 for error in errors:
                     path = ".".join(error["path"])
                     if error['code'] == 0x02:
-                        Log.error(f"Configuration is missing the option '{path}'. " \
+                        log.error("Configuration is missing the option '%s'. " \
                             "Make sure to supply the option either via configuration, "\
-                            "environment variable or command line argument")
+                            "environment variable or command line argument", path)
                     else:
-                        Log.error(f"Configuration contains an invalid option '{path}': {error['msg']}")
+                        log.error("Configuration contains an invalid option '%s': %s", path, error['msg'])
                 raise ConfigError(
                     "There is one or more errors in the configuration. Check the following options: {}".format(
                         ", ".join([i[0] for i in errors])))

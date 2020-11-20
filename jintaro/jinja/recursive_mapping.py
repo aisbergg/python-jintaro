@@ -35,8 +35,8 @@ class RecursiveMapping(MutableMapping):
 
         value = self.__data[key]
         if isinstance(value, self.UnresolvedString):
-            rendered_string = JINJA_ENVIRONMENT.from_string(
-                value, template_class=RecursiveTemplate).render_recursive(self)
+            rendered_string = JINJA_ENVIRONMENT.from_string(value,
+                                                            template_class=RecursiveTemplate).render_recursive(self)
             if rendered_string != value:
                 value = self._evaluate_string(rendered_string)
             else:

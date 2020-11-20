@@ -10,7 +10,7 @@ from . import exceptions
 from .config import ApiConfigSource, Config
 from .jinja.recursive_mapping import RecursiveMapping
 from .jinja.recursive_template import render_template
-from .log import Log
+from .log import log
 from .utils import check_file, merge_dicts, read_file
 
 
@@ -139,7 +139,7 @@ class Jintaro:
 
         return self._property("csv_delimiter", delimiter, clear)
 
-    def extra_vars(self, vars_: Optional[Mapping] = None, clear: bool = False) -> Union["Jintaro", Dict, None]:
+    def extra_vars(self, vars: Optional[Mapping] = None, clear: bool = False) -> Union["Jintaro", Dict, None]:
         assert (isinstance(vars, (dict, type(None))))
         assert (isinstance(clear, bool))
 
@@ -165,7 +165,7 @@ class Jintaro:
             except Exception as ex:  #pylint: disable=broad-except
                 if not self._api_config.get("continue_on_error"):
                     raise ex
-                Log.error(str(ex))
+                log.error(str(ex))
 
     # -------------------------------------------------------------------------#
     #      __     _    ____ ___                                                #
@@ -314,7 +314,7 @@ class JintaroJob(object):
 
     def _run_hook(self, command: str, hook_type: str) -> None:
         if command:
-            Log.debug("Running {} hook: {}", hook_type, command)
+            log.debug("Running %s hook %s", hook_type, command)
             process = subprocess.Popen(
                 command,
                 shell=True,
@@ -327,7 +327,7 @@ class JintaroJob(object):
             process_output = lambda output: "\n".join(output.splitlines())
             stdout = process_output(process.stdout.read())
             stderr = process_output(process.stderr.read())
-            Log.debug(stdout)
+            log.debug(stdout)
             if process.returncode != 0:
                 print(f"Error code: {process.returncode}")
                 raise exceptions.HookRunError(f"Failed to run {hook_type} hook for '{self.output}': {stderr}")
@@ -342,10 +342,10 @@ class JintaroJob(object):
             except Exception as ex:
                 raise exceptions.OutputError(f"Failed to evaluate skip rule: {ex}")
             if skip:
-                Log.info("Skipping dataset {} from '{}'", self.row + 1, self.input)
+                log.v("Skipping dataset %s from '%s'", self.row + 1, self.input)
                 return
 
-        Log.info("Processing dataset {} from '{}'", self.row + 1, self.input)
+        log.v("Processing dataset %s from '%s'", self.row + 1, str(self.input))
 
         # run pre hook
         self._run_hook(self.pre_hook, 'pre')

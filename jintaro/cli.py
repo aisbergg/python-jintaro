@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 
 import argparse
+import logging
 import sys
 import traceback
 
 from . import __version__ as jintaro_version
 from .exceptions import ConfigValueError
 from .jintaro import Jintaro
-from .log import Log
+from .log import configure_root_logger, log
 
 
 def main():
@@ -15,7 +16,7 @@ def main():
     parser = argparse.ArgumentParser(
         prog="jintaro",
         #TODO: Add description and examples
-        description="XXX",
+        description="Template List excel, csv ods",
         add_help=False,
     )
 
@@ -126,9 +127,9 @@ def main():
 
     args = parser.parse_args(sys.argv[1:])
 
-    # initialize dumb logger
-    levels = [Log.ERROR, Log.INFO, Log.DEBUG]
-    Log.configure(level=levels[min(len(levels) - 1, args.verbose + 1)])
+    # initialize logger
+    levels = ["WARNING", "V", "VV", "VVV", "DEBUG"]
+    configure_root_logger(levels[min(len(levels), args.verbose)])
 
     try:
         jintaro = Jintaro()
@@ -167,17 +168,17 @@ def main():
         jintaro.run()
 
     except KeyboardInterrupt:
-        Log.info("Interrupted by user, Exiting...")
+        log.v("Interrupted by user, Exiting...")
         sys.exit(1)
     except Exception as e:  #pylint: disable=broad-except
         # catch errors and print to stderr
-        if Log.level <= 10:
-            Log.error(traceback.format_exc())
+        if logging.root.level <= logging.DEBUG:
+            log.error(traceback.format_exc())
         else:
-            Log.error(str(e))
+            log.error(str(e))
         sys.exit(1)
 
-    Log.info("Jintaro finished, exiting now...")
+    log.v("Jintaro finished, exiting now...")
     sys.exit(0)
 
 

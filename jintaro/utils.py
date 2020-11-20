@@ -101,7 +101,7 @@ class Property(object):
                     if default is not None:
                         value = default
                     else:
-                        raise exception(f"Unknown option '{path}'")   #pylint: disable=raise-missing-from
+                        raise exception(f"Unknown option '{path}'")  #pylint: disable=raise-missing-from
             else:
                 if hasattr(value, key):
                     value = getattr(value, key)

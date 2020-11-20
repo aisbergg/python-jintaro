@@ -1,108 +1,80 @@
-import sys
+import logging
+import logging.config
 
 
-class Log:
-    """Stupid logger that writes messages to stdout or stderr accordingly."""
+def add_log_level(name, level):
 
-    ERROR = 40
-    WARN = 30
-    INFO = 20
-    V = 20
-    VV = 21
-    VVV = 22
-    DEBUG = 10
-    level = ERROR
-    prefix = ""
+    def logging_method(level):
 
-    @classmethod
-    def configure(cls, level=ERROR, prefix=""):
-        cls.level = level
-        cls.prefix = prefix
+        def method(self, message, *args, **kws):
+            if self.isEnabledFor(level):
+                self._log(level, message, args, **kws)  #pylint: disable=protected-access
 
-    @classmethod
-    def _log(cls, level: str, stream, msg: str, *args):
-        """Write a message to a stream.
+        return method
 
-        Args:
-            stream (TextIOWrapper): the stream to write to
-            msg (str): the message to write
-        """
-        if args:
-            msg = msg.format(*args)
+    uppercase_name = name.upper()
+    logging.addLevelName(level, uppercase_name)
+    setattr(logging.Logger, uppercase_name, level)
+    setattr(logging.Logger, name, logging_method(level))
+    logging.__all__ += [uppercase_name]
 
-        stream.write(level + ": " + cls.prefix + msg + "\n")
 
-    @classmethod
-    def debug(cls, msg, *args):
-        """Log in debug messages.
+# add more fine grained info levels
+add_log_level("v", logging.INFO)
+add_log_level("vv", logging.INFO + 1)
+add_log_level("vvv", logging.INFO + 2)
 
-        Args:
-            msg (str): the message to be logged
-            indent (int, optional): Add indentation to the message. Defaults to 0.
-        """
-        if cls.level <= cls.DEBUG:
-            cls._log("DEBUG", sys.stdout, cls._indent(msg), *args)
+log = logging.getLogger(__name__)
 
-    @classmethod
-    def info(cls, msg, *args):
-        """Log in info messages.
 
-        Args:
-            msg (str): the message to be logged
-            indent (int, optional): Add indentation to the message. Defaults to 0.
-        """
-        if cls.level <= cls.INFO:
-            cls._log("INFO", sys.stdout, cls._indent(msg), *args)
+def configure_root_logger(level):
 
-    @classmethod
-    def v(cls, msg, *args):
-        """Log in info messages.
+    class StdoutFilter(object):
 
-        Args:
-            msg (str): the message to be logged
-            indent (int, optional): Add indentation to the message. Defaults to 0.
-        """
-        if cls.level <= cls.V:
-            cls._log("INFO", sys.stdout, cls._indent(msg), *args)
+        def filter(self, record):
+            return record.levelno < logging.WARNING
 
-    @classmethod
-    def warn(cls, msg, *args):
-        """Log in warn messages.
+    class StderrFilter(object):
 
-        Args:
-            msg (str): the message to be logged
-            indent (int, optional): Add indentation to the message. Defaults to 0.
-        """
-        if cls.level <= cls.WARN:
-            cls._log("WARN", sys.stderr, cls._indent(msg), *args)
+        def filter(self, record):
+            return record.levelno >= logging.WARNING
 
-    @classmethod
-    def error(cls, msg, *args):
-        """Log in error messages.
-
-        Args:
-            msg (str): the message to be logged
-            indent (int, optional): Add indentation to the message. Defaults to 0.
-        """
-        if cls.level <= cls.ERROR:
-            cls._log("ERROR", sys.stderr, cls._indent(msg), *args)
-
-    @staticmethod
-    def _indent(string, indent=4):
-        """Adds indentation to a multiline string. The fist line will be kept unchanged.
-
-        Args:
-            string (str): String to be indented
-            indent (int): Number of spaces to indent the string
-
-        Returns:
-            str: The indented string.
-        """
-        if indent > 0 and string:
-            lines = string.splitlines()
-            string = lines[0]
-            if len(lines) > 1:
-                string = string + "\n" + "\n".join([" " * indent + l for l in lines[1:]])
-            return string
-
-        return string
+    logging_config = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'formatters': {
+            'message_only': {
+                'format': '%(message)s'
+            },
+        },
+        'filters': {
+            'stdout_filter': {
+                '()': StdoutFilter
+            },
+            'stderr_filter': {
+                '()': StderrFilter
+            }
+        },
+        'handlers': {
+            'stdout': {
+                'class': 'logging.StreamHandler',
+                'formatter': 'message_only',
+                'filters': ['stdout_filter'],
+                'stream': 'ext://sys.stdout'
+            },
+            'stderr': {
+                'class': 'logging.StreamHandler',
+                'formatter': 'message_only',
+                'filters': ['stderr_filter'],
+                'stream': 'ext://sys.stderr'
+            },
+        },
+        'loggers': {
+            '': {
+                'handlers': ['stdout', 'stderr'],
+                'level': level,
+                'propagate': True
+            }
+        }
+    }
+    logging.config.dictConfig(logging_config)
