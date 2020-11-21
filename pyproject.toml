@@ -36,7 +36,8 @@ yapf = "^0.30.0"
 jintaro = "jintaro.cli:main"
 
 [tool.poe.tasks]
-format = {cmd = "yapf -i -r -vv -p .", help = "Format the code using YAPF"}
+build = {shell = "poetry build & pyinstaller --onefile jintaro.spec", help = "Build the application"}
+bump = {cmd = "bump2version --allow-dirty", help = "Bump the application version using bump2version"}
 _clean = """
 rm -rf .coverage
        .pytest_cache
@@ -45,11 +46,11 @@ rm -rf .coverage
        ./**/__pycache__
 """
 clean = {ref = "_clean", help = "Clean up temporary files"}
-test = {cmd = "pytest --cov=jintaro", help = "Run the test suits"}
-build = {shell = "poetry build & pyinstaller --onefile jintaro.spec", help = "Build the applications"}
+format = {cmd = "yapf -i -r -vv -p .", help = "Format the code using YAPF"}
+lint = {cmd = "pylint ./jintaro", help = "Use PyLint to evaluate the code quality"}
 _publish = {cmd = "poetry publish"}
 release = {sequence = ["format", "test", "build", "_publish"], help = "Create a release of the application and publish it on PyPi"}
-bump = {cmd = "bump2version --allow-dirty"}
+test = {cmd = "pytest --cov=jintaro", help = "Run the test suits"}
 
 [build-system]
 requires = ["poetry>=0.12"]
