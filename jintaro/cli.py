@@ -15,116 +15,125 @@ def main():
     # parse arguments
     parser = argparse.ArgumentParser(
         prog="jintaro",
-        #TODO: Add description and examples
-        description="Template List excel, csv ods",
+        description="Versatile batch templating, using Jinja2 templates and " \
+                    "a spreadsheet format of your choice (xlsx, ods, csv)",
         add_help=False,
     )
-
-    parser.add_argument(
+    general_options = parser.add_argument_group(title="general options")
+    general_options.add_argument(
+        "-h",
         "--help",
         action="help",
-        help="Show this help message and exit",
+        help="Show this help message and quit",
     )
-    parser.add_argument(
+    general_options.add_argument(
         "--version",
         action="version",
         version=f"Jintaro v{jintaro_version}",
         help="Print the program version and quit",
     )
-    parser.add_argument(
+    general_options.add_argument(
         "-v",
         "--verbose",
         dest="verbose",
         action="count",
         default=0,
-        help="Enable more verbose mode",
+        help="Make output verbose. Use it multiple times to increase verbosity",
     )
-    parser.add_argument(
+    general_options.add_argument(
         "-c",
         "--config",
         dest="config",
         type=str,
         default=None,
-        help="",
+        help="The Jintaro configuration file",
     )
-    parser.add_argument(
+    general_options.add_argument(
+        "--continue-on-error",
+        dest="continue_on_error",
+        action="store_true",
+        default=None,
+        help="Continue execution, even if errors occur",
+    )
+
+    config_options = parser.add_argument_group(title="config options")
+    config_options.add_argument(
         "-i",
         "--input",
         dest="input",
         type=str,
         default=None,
         nargs='*',
-        help="",
+        help="The input spreadsheet file(s) (file formats: xlsx, ods, csv)",
     )
-    parser.add_argument(
+    config_options.add_argument(
         "-t",
         "--template",
         dest="template",
         type=str,
         default=None,
-        help="",
+        help="The template file. Path can contain Jinja2 syntax.",
     )
-    parser.add_argument(
+    config_options.add_argument(
         "-o",
         "--output",
         dest="output",
         type=str,
         default=None,
-        help="",
+        help="Directory for resulting files",
     )
-    parser.add_argument(
+    config_options.add_argument(
         "-f",
         "--force",
         dest="force",
         action="store_true",
         default=None,
-        help="",
+        help="Force overwrite of existing files",
     )
-    parser.add_argument(
+    config_options.add_argument(
         "--delete",
         dest="delete",
         action="store_true",
         default=None,
-        help="Delete rendered files afterwards. Might be usefull in combination with --post-hook.",
+        help="Delete rendered files after post-hook finished",
     )
-    parser.add_argument(
+    config_options.add_argument(
         "--pre-hook",
         dest="pre_hook",
         type=str,
         default=None,
-        help="",
+        help="Command to execute before templating",
     )
-    parser.add_argument(
+    config_options.add_argument(
         "--post-hook",
         dest="post_hook",
         type=str,
         default=None,
-        help="",
+        help="Command to execute after templating",
     )
-    parser.add_argument(
+    config_options.add_argument(
+        "--skip",
+        dest="skip",
+        type=str,
+        default=None,
+        help="Rule for skipping input list entries",
+    )
+    config_options.add_argument(
         "--header-row-column",
         dest="header_row_column",
         type=str,
         default=None,
-        help="",
+        help="First row/column of the input file(s), that contains the header (format: 0,0)",
     )
-    parser.add_argument(
+    config_options.add_argument(
         "-e",
         "--extra-vars",
         dest="extra_vars",
         type=str,
         default=None,
         nargs='*',
-        help="",
+        help="Extra variables used for templating (format: key=value)",
     )
-    parser.add_argument(
-        "--continue-on-error",
-        dest="continue_on_error",
-        action="store_true",
-        default=None,
-        help="",
-    )
-
     args = parser.parse_args(sys.argv[1:])
 
     # initialize logger
@@ -151,6 +160,8 @@ def main():
             jintaro.pre_hook(args.pre_hook)
         if args.post_hook:
             jintaro.post_hook(args.post_hook)
+        if args.skip:
+            jintaro.skip(args.skip)
         if args.header_row_column:
             jintaro.header_row_column(args.header_row_column)
         if args.extra_vars:

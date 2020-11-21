@@ -117,6 +117,12 @@ class Jintaro:
 
         return self._property("post_hook", cmd, clear)
 
+    def skip(self, rule: Optional[str] = None, clear: bool = False) -> Union["Jintaro", str, None]:
+        assert isinstance(rule, (str, type(None)))
+        assert isinstance(clear, bool)
+
+        return self._property("skip", rule, clear)
+
     def header_row_column(self,
                           row: Optional[int] = None,
                           column: Optional[int] = None,
@@ -228,11 +234,11 @@ class Jintaro:
                     row=i,
                     output_path=config.get("output"),
                     template_path=config.get("template"),
+                    pre_hook=config.get("pre_hook"),
+                    post_hook=config.get("post_hook"),
                     skip=config.get("skip"),
                     force=config.get("force"),
                     delete=config.get("delete"),
-                    pre_hook=config.get("pre_hook"),
-                    post_hook=config.get("post_hook"),
                     variables=variables,
                 )
 
