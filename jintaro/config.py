@@ -66,7 +66,7 @@ class ConfigValidator(Validator):
             mapping[field] = schema[field]['default']
 
 
-class ConfigSource(object):
+class ConfigSource:
 
     def __init__(self):
         super().__init__()
@@ -125,7 +125,7 @@ class ConfigSource(object):
                         log.error("Configuration contains an invalid option '%s': %s", path, error['msg'])
                 raise ConfigError(
                     "There is one or more errors in the configuration. Check the following options: {}".format(
-                        ", ".join([i[0] for i in errors])))
+                        ", ".join([err["path"] for err in errors])))
 
             self._config = validator.document
 
@@ -142,20 +142,19 @@ class ConfigSource(object):
 
     @staticmethod
     def val_to_row_column(val: Union[int, float, List[int]]) -> List[int]:
+        row = column = 0
         if isinstance(val, str):
-            val = val.split(",")
-            row = column = 0
-            if len(val) > 0:
-                row = int(val[0]) if len(val[0]) > 0 else 0
-            if len(val) > 1:
-                column = int(val[0]) if len(val[0]) > 0 else 0
-            return [row, column]
+            values = val.split(",")
+            if len(values) > 0:
+                row = int(values[0]) if len(values[0]) > 0 else 0
+            if len(values) > 1:
+                column = int(values[0]) if len(values[0]) > 0 else 0
         if isinstance(val, (int, float)):
-            return [int(val), 0]
+            row = int[val]
         if isinstance(val, list):
             row = int(val[0]) if len(val) > 0 else 0
             column = int(val[1]) if len(val) > 1 else 0
-            return [row, column]
+        return [row, column]
 
 
 class Config(ConfigSource):

@@ -46,7 +46,7 @@ def regex_search(value, pattern, *args, **kwargs):
             groups.append(match.group(1))
             continue
 
-        raise Exception("Unknown argument: '{}'".format(str(arg)))
+        raise Exception("Unknown argument: '{arg}'")
 
     flags = 0
     if kwargs.get('ignorecase'):
@@ -92,7 +92,7 @@ def to_bool(string, default_value=None):
         if default_value is not None:
             return default_value
         else:
-            raise ValueError("'{0}' is not a boolean value".format(string.strip()))  #pylint: disable=raise-missing-from
+            raise ValueError(f"'{string}' is not a boolean value")  #pylint: disable=raise-missing-from
 
 
 def to_path(string):
@@ -107,12 +107,12 @@ def quote(string):
 
 # register the filters
 JINJA_FILTERS = {
-    'regex_escape': regex_escape,
-    'regex_findall': regex_findall,
-    'regex_replace': regex_replace,
-    'regex_search': regex_search,
-    'regex_contains': regex_contains,
-    'bool': to_bool,
-    'path': to_path,
-    'quote': quote,
+    "regex_escape": regex_escape,
+    "regex_findall": regex_findall,
+    "regex_replace": regex_replace,
+    "regex_search": regex_search,
+    "regex_contains": regex_contains,
+    "bool": to_bool,
+    "path": to_path,
+    "quote": quote,
 }

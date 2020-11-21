@@ -29,51 +29,51 @@ log = logging.getLogger(__name__)
 
 def configure_root_logger(level):
 
-    class StdoutFilter(object):
+    class StdoutFilter:  #pylint: disable=too-few-public-methods
 
-        def filter(self, record):
+        def filter(self, record) -> bool:  #pylint: disable=no-self-use
             return record.levelno < logging.WARNING
 
-    class StderrFilter(object):
+    class StderrFilter:  #pylint: disable=too-few-public-methods
 
-        def filter(self, record):
+        def filter(self, record) -> bool:  #pylint: disable=no-self-use
             return record.levelno >= logging.WARNING
 
     logging_config = {
-        'version': 1,
-        'disable_existing_loggers': False,
-        'formatters': {
-            'message_only': {
-                'format': '%(message)s'
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            "message_only": {
+                "format": "%(message)s"
             },
         },
-        'filters': {
-            'stdout_filter': {
-                '()': StdoutFilter
+        "filters": {
+            "stdout_filter": {
+                "()": StdoutFilter
             },
-            'stderr_filter': {
-                '()': StderrFilter
+            "stderr_filter": {
+                "()": StderrFilter
             }
         },
-        'handlers': {
-            'stdout': {
-                'class': 'logging.StreamHandler',
-                'formatter': 'message_only',
-                'filters': ['stdout_filter'],
-                'stream': 'ext://sys.stdout'
+        "handlers": {
+            "stdout": {
+                "class": "logging.StreamHandler",
+                "formatter": "message_only",
+                "filters": ["stdout_filter"],
+                "stream": "ext://sys.stdout"
             },
-            'stderr': {
-                'class': 'logging.StreamHandler',
-                'formatter': 'message_only',
-                'filters': ['stderr_filter'],
-                'stream': 'ext://sys.stderr'
+            "stderr": {
+                "class": "logging.StreamHandler",
+                "formatter": "message_only",
+                "filters": ["stderr_filter"],
+                "stream": "ext://sys.stderr"
             },
         },
-        'loggers': {
-            '': {
-                'handlers': ['stdout', 'stderr'],
-                'level': level,
-                'propagate': True
+        "loggers": {
+            "": {
+                "handlers": ["stdout", "stderr"],
+                "level": level,
+                "propagate": True
             }
         }
     }
